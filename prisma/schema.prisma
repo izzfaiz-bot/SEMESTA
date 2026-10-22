@@ -1,0 +1,220 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+}
+
+enum MaterialType {
+  VIDEO
+  PPT
+}
+
+enum QuestionSource {
+  WEBSITE
+  TEACHER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String?  @db.Text
+  role         UserRole @default(TEACHER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdQuestions Question[]     @relation("TeacherQuestions")
+  adminSessions    AdminSession[]
+
+  @@index([role, isActive])
+}
+
+model AdminSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique @db.VarChar(64)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(120)
+  slug        String   @unique @db.VarChar(160)
+  subtitle    String?  @db.VarChar(120)
+  description String?  @db.Text
+  topics      String[] @default([])
+  emoji       String?  @db.VarChar(20)
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  phenomena Phenomenon[]
+  attempts  QuizAttempt[] @relation("AttemptCategory")
+
+  @@index([isPublished, sortOrder])
+}
+
+model Phenomenon {
+  id          String   @id @default(uuid()) @db.Uuid
+  categoryId  String   @db.Uuid
+  title       String   @db.VarChar(180)
+  slug        String   @unique @db.VarChar(200)
+  description String?  @db.Text
+  content     String?  @db.Text
+  imageUrl    String?  @db.Text
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category  Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  materials LearningMaterial[]
+  questions Question[]
+  attempts  QuizAttempt[]     @relation("AttemptPhenomenon")
+
+  @@index([categoryId, isPublished, sortOrder])
+}
+
+model LearningMaterial {
+  id           String       @id @default(uuid()) @db.Uuid
+  phenomenonId String       @db.Uuid
+  type         MaterialType
+  title        String       @db.VarChar(180)
+  description  String?      @db.Text
+  url          String       @db.Text
+  storagePath  String?      @db.Text
+  sortOrder    Int          @default(0)
+  isPublished  Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  phenomenon Phenomenon @relation(fields: [phenomenonId], references: [id], onDelete: Cascade)
+
+  @@index([phenomenonId, type, isPublished, sortOrder])
+}
+
+model Question {
+  id           String         @id @default(uuid()) @db.Uuid
+  phenomenonId String         @db.Uuid
+  createdById  String?        @db.Uuid
+  source       QuestionSource @default(WEBSITE)
+  text         String         @db.Text
+  explanation  String         @db.Text
+  difficulty   Difficulty     @default(MEDIUM)
+  points       Int            @default(1000)
+  isPublished  Boolean        @default(false)
+  isArchived   Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  phenomenon Phenomenon          @relation(fields: [phenomenonId], references: [id], onDelete: Cascade)
+  creator    User?                @relation("TeacherQuestions", fields: [createdById], references: [id], onDelete: SetNull)
+  options    QuestionOption[]
+  soloQuestions QuizAttemptQuestion[]
+
+  @@index([phenomenonId, source, isPublished, isArchived])
+  @@index([createdById, source, isArchived])
+  @@index([difficulty])
+}
+
+model QuestionOption {
+  id         String   @id @default(uuid()) @db.Uuid
+  questionId String   @db.Uuid
+  text       String   @db.Text
+  isCorrect  Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  question    Question             @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  soloAnswers QuizAttemptAnswer[]  @relation("SoloSelectedOption")
+
+  @@index([questionId, sortOrder])
+}
+
+model QuizAttempt {
+  id           String        @id @default(uuid()) @db.Uuid
+  nickname     String?       @db.VarChar(40)
+  categoryId   String?       @db.Uuid
+  phenomenonId String?       @db.Uuid
+  score        Int           @default(0)
+  totalPoints  Int           @default(0)
+  status       AttemptStatus @default(IN_PROGRESS)
+  startedAt    DateTime      @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+
+  category   Category?   @relation("AttemptCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  phenomenon Phenomenon? @relation("AttemptPhenomenon", fields: [phenomenonId], references: [id], onDelete: SetNull)
+  questions  QuizAttemptQuestion[]
+
+  @@index([phenomenonId, createdAt])
+  @@index([status, startedAt])
+}
+
+model QuizAttemptQuestion {
+  id                   String     @id @default(uuid()) @db.Uuid
+  attemptId            String     @db.Uuid
+  questionId           String     @db.Uuid
+  position             Int
+  questionTextSnapshot String     @db.Text
+  explanationSnapshot  String     @db.Text
+  difficulty            Difficulty
+  points                Int
+  timeLimitSeconds      Int
+  createdAt             DateTime   @default(now())
+  questionStartedAt     DateTime?
+
+  attempt  QuizAttempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer   QuizAttemptAnswer?
+
+  @@unique([attemptId, position])
+  @@unique([attemptId, questionId])
+  @@index([questionId])
+}
+
+model QuizAttemptAnswer {
+  id                 String   @id @default(uuid()) @db.Uuid
+  attemptQuestionId  String   @unique @db.Uuid
+  selectedOptionId   String?  @db.Uuid
+  selectedOptionText String?  @db.Text
+  isCorrect          Boolean  @default(false)
+  basePoints         Int      @default(0)
+  bonusPoints        Int      @default(0)
+  pointsEarned       Int      @default(0)
+  responseTimeMs     Int?
+  answeredAt         DateTime @default(now())
+
+  attemptQuestion QuizAttemptQuestion @relation(fields: [attemptQuestionId], references: [id], onDelete: Cascade)
+  selectedOption  QuestionOption?     @relation("SoloSelectedOption", fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@index([selectedOptionId])
+}

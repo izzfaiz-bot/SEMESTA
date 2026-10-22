@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
+/* ========================================
+   1. THEME
+======================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #258fe8;
+  --foreground: #ffffff;
+  --space-blue: #1675d1;
+  --space-cyan: #69d5ff;
+  --space-purple: #6479df;
+  --space-yellow: #ffdf70;
+  --space-orange: #ffbf55;
+  --space-pink: #ff9fcf;
+  --space-text: #12345a;
 }
 
 @theme inline {
@@ -12,15 +23,464 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ========================================
+   2. BASE
+======================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
+  min-height: 100vh;
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--space-yellow);
+  outline-offset: 5px;
+}
+
+/* ========================================
+   3. SEMESTA BACKGROUND
+======================================== */
+
+.semesta {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 75% 45%, rgba(113, 207, 255, 0.55), transparent 38%),
+    radial-gradient(ellipse at 15% 12%, rgba(255, 255, 255, 0.28), transparent 32%),
+    linear-gradient(135deg, #1675d1 0%, #258fe8 48%, #536de0 100%);
+}
+
+.semesta::before,
+.semesta::after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+
+.semesta::before {
+  top: -160px;
+  left: -120px;
+  width: 400px;
+  height: 400px;
+  background: rgba(151, 224, 255, 0.24);
+  animation: nebula-float 12s ease-in-out infinite alternate;
+}
+
+.semesta::after {
+  right: -150px;
+  bottom: -170px;
+  width: 440px;
+  height: 440px;
+  background: rgba(117, 135, 255, 0.28);
+  animation: nebula-float 15s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes nebula-float {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(35px, -25px) scale(1.12);
+  }
+}
+
+/* ========================================
+   4. STARRY SKY
+======================================== */
+
+.stars {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, #fff 1.5px, transparent 2px),
+    radial-gradient(circle, #fff5bd 1.5px, transparent 2.5px),
+    radial-gradient(circle, #dff8ff 1px, transparent 1.5px),
+    radial-gradient(circle, #fff 1px, transparent 1.5px);
+  background-size:
+    125px 135px,
+    205px 190px,
+    95px 105px,
+    175px 160px;
+  background-position:
+    0 0,
+    45px 65px,
+    30px 20px,
+    90px 100px;
+  animation: stars-drift 35s linear infinite;
+}
+
+@keyframes stars-drift {
+  from {
+    background-position: 0 0, 45px 65px, 30px 20px, 90px 100px;
+  }
+  to {
+    background-position: 0 135px, 45px 255px, 30px 125px, 90px 260px;
+  }
+}
+
+/* ========================================
+   5. PLANETS AND SPARKLES
+======================================== */
+
+.planet {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 12px 18px rgba(12, 57, 123, 0.22));
+  transform-origin: center;
+  transition: filter 300ms ease;
+}
+
+.planet-one {
+  top: 8%;
+  left: 7%;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  animation: planet-float 5s ease-in-out infinite;
+}
+
+.planet-two {
+  right: 6%;
+  bottom: 10%;
+  font-size: clamp(3rem, 8vw, 7rem);
+  animation: planet-float 6s ease-in-out infinite reverse;
+}
+
+.planet-three {
+  top: 14%;
+  right: 13%;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  animation: planet-float 4.5s ease-in-out infinite;
+}
+
+.sparkle {
+  position: absolute;
+  z-index: 1;
+  color: var(--space-yellow);
+  pointer-events: none;
+  filter: drop-shadow(0 0 7px rgba(255, 223, 112, 0.5));
+  animation: sparkle-pop 2s ease-in-out infinite;
+}
+
+@keyframes planet-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(5deg);
+  }
+}
+
+@keyframes sparkle-pop {
+  0%,
+  100% {
+    opacity: 0.55;
+    scale: 0.85;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.15;
+  }
+}
+
+/* ========================================
+   6. HERO CONTENT
+======================================== */
+
+.enter {
+  animation: content-appear 800ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes content-appear {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-heading {
+  color: #fff;
+  text-shadow:
+    0 3px 0 rgba(15, 66, 140, 0.22),
+    0 7px 20px rgba(14, 55, 130, 0.18);
+  letter-spacing: -0.035em;
+}
+
+.hero-copy {
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 2px 12px rgba(14, 55, 130, 0.12);
+}
+
+.space-mascot {
+  display: inline-block;
+  transform-origin: center;
+  filter: drop-shadow(0 18px 20px rgba(12, 55, 130, 0.22));
+  animation: mascot-float 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes mascot-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(2deg);
+  }
+}
+
+.float-item {
+  animation: item-bob 3.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.float-item:nth-child(2n) {
+  animation-delay: -1s;
+}
+
+.float-item:nth-child(3n) {
+  animation-delay: -2s;
+}
+
+@keyframes item-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-9px) rotate(3deg);
+  }
+}
+
+.twinkle {
+  animation: star-twinkle 2s ease-in-out infinite;
+}
+
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+    scale: 0.8;
+  }
+  50% {
+    opacity: 0.95;
+    scale: 1.15;
+  }
+}
+
+.orbit {
+  transform-origin: center;
+  animation: orbit-rotate 40s linear infinite;
+}
+
+@keyframes orbit-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   7. GLASS PANELS
+======================================== */
+
+.glass-panel {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 12px 35px rgba(13, 58, 130, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* ========================================
+   8. START BUTTON
+======================================== */
+
+.start-glow {
+  position: relative;
+  isolation: isolate;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffeb8b 0%, #ffd04f 100%);
+  color: #17395e;
+  font-weight: 900;
+  box-shadow:
+    0 7px 0 #d99a26,
+    0 12px 25px rgba(12, 55, 120, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.65);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+  animation: start-pulse 2.8s ease-in-out infinite;
+}
+
+.start-glow::after {
+  position: absolute;
+  top: 5px;
+  right: 12%;
+  left: 12%;
+  z-index: -1;
+  height: 30%;
+  content: "";
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+@keyframes start-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.045);
+  }
+}
+
+@media (hover: hover) {
+  .start-glow:hover {
+    filter: brightness(1.05);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow:
+      0 11px 0 #d99a26,
+      0 18px 34px rgba(255, 223, 112, 0.25),
+      inset 0 2px 0 rgba(255, 255, 255, 0.7);
+  }
+}
+
+.start-glow:active {
+  transform: translateY(4px) scale(0.98);
+  box-shadow:
+    0 3px 0 #d99a26,
+    0 6px 12px rgba(12, 55, 120, 0.15);
+}
+
+/* ========================================
+   9. FEATURE CARDS
+======================================== */
+
+.float-card {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(12, 55, 120, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    transform 220ms ease,
+    background 220ms ease,
+    box-shadow 220ms ease;
+}
+
+@media (hover: hover) {
+  .float-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.23);
+    box-shadow: 0 14px 28px rgba(12, 55, 120, 0.16);
+  }
+}
+
+/* ========================================
+   10. RESPONSIVE
+======================================== */
+
+@media (max-height: 650px) and (orientation: landscape) {
+  .hero-heading {
+    font-size: clamp(36px, 7.5vh, 66px);
+  }
+
+  .space-mascot {
+    font-size: clamp(110px, 25vh, 210px);
+  }
+
+  .planet-one {
+    top: 4%;
+  }
+
+  .planet-two {
+    bottom: 4%;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .planet-one {
+    top: 12%;
+    left: 4%;
+  }
+
+  .planet-two {
+    right: 3%;
+    bottom: 8%;
+  }
+
+  .planet-three {
+    top: 16%;
+    right: 5%;
+  }
+
+  .glass-panel {
+    border-radius: 20px;
+  }
+
+  .semesta {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
+/* ========================================
+   11. ACCESSIBILITY
+======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
