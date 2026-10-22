@@ -1,7 +1,7 @@
 // app/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SemestaInfoModal from "@/components/home/SemestaInfoModal";
 import {
@@ -14,6 +14,8 @@ import {
   Star,
   Telescope,
   Trophy,
+  Maximize,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -27,6 +29,89 @@ const stars = Array.from({ length: 34 }, (_, i) => ({
 export default function HomePage() {
   const router = useRouter();
   const [showInfo, setShowInfo] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showExitButton, setShowExitButton] = useState(true);
+  const hideButtonTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHideTimeout = useCallback(() => {
+    if (hideButtonTimeout.current) {
+      clearTimeout(hideButtonTimeout.current);
+      hideButtonTimeout.current = null;
+    }
+  }, []);
+
+  const showExitTemporarily = useCallback(() => {
+    setShowExitButton(true);
+    clearHideTimeout();
+
+    hideButtonTimeout.current = setTimeout(() => {
+      setShowExitButton(false);
+    }, 2500);
+  }, [clearHideTimeout]);
+
+  const syncFullscreen = useCallback(() => {
+    const fullscreen = Boolean(document.fullscreenElement);
+    setIsFullscreen(fullscreen);
+    setShowExitButton(true);
+    clearHideTimeout();
+  }, [clearHideTimeout]);
+
+  useEffect(() => {
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    syncFullscreen();
+
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+    };
+  }, [syncFullscreen]);
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      clearHideTimeout();
+      setShowExitButton(true);
+      return;
+    }
+
+    showExitTemporarily();
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (event.clientY <= 100) showExitTemporarily();
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (touch && touch.clientY <= 120) showExitTemporarily();
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchstart", handleTouchStart);
+      clearHideTimeout();
+    };
+  }, [isFullscreen, showExitTemporarily, clearHideTimeout]);
+
+  const enterFullscreen = async () => {
+    if (document.fullscreenElement) return;
+
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch {
+      // Fullscreen dapat ditolak oleh browser.
+    }
+  };
+
+  const exitFullscreen = async () => {
+    if (!document.fullscreenElement) return;
+
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Biarkan browser menangani kondisi fullscreen.
+    }
+  };
 
   return (
     <main
@@ -54,8 +139,26 @@ export default function HomePage() {
         />
       ))}
 
+      {/* Tombol keluar fullscreen: muncul sementara di kanan atas */}
+      {isFullscreen && (
+        <button
+          type="button"
+          onClick={exitFullscreen}
+          aria-label="Keluar dari layar penuh"
+          title="Keluar dari layar penuh"
+          tabIndex={showExitButton ? 0 : -1}
+          className={`fixed right-4 top-4 z-[100] grid h-10 w-10 place-items-center rounded-xl border border-white/30 bg-slate-950/35 text-white shadow-lg backdrop-blur-md transition-all duration-300 hover:rotate-90 hover:bg-white hover:text-blue-600 sm:right-6 sm:top-6 ${
+            showExitButton
+              ? "visible translate-y-0 opacity-100"
+              : "invisible -translate-y-2 opacity-0"
+          }`}
+        >
+          <X className="h-5 w-5" strokeWidth={2.5} />
+        </button>
+      )}
+
       {/* Header */}
-      <header className="relative z-20 mx-auto flex h-[88px] w-full max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
+      <header className="relative mt-3 z-20 mx-auto flex h-[88px] w-full max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
         <div className="flex min-w-0 items-center gap-3">
           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-white/50 bg-white shadow-lg shadow-cyan-950/10">
             <Image
@@ -79,6 +182,19 @@ export default function HomePage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {/* Tombol fullscreen: posisi seperti desain awal */}
+          {!isFullscreen && (
+            <button
+              type="button"
+              onClick={enterFullscreen}
+              aria-label="Masuk layar penuh"
+              title="Masuk layar penuh"
+              className="group grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/40 bg-white/15 text-white shadow-lg shadow-sky-950/10 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-cyan-200/70 hover:bg-white/25 hover:text-cyan-100 active:translate-y-0 sm:h-12 sm:w-12"
+            >
+              <Maximize className="h-5 w-5 transition-transform duration-300 group-hover:scale-110 sm:h-6 sm:w-6" />
+            </button>
+          )}
+
           {/* Tombol login admin */}
           <button
             type="button"
@@ -154,13 +270,13 @@ export default function HomePage() {
             <div className="orbit absolute left-1/2 top-1/2 h-[86%] w-[86%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-cyan-50/55" />
             <div className="orbit absolute left-1/2 top-1/2 h-[64%] w-[94%] -translate-x-1/2 -translate-y-1/2 rotate-[-32deg] rounded-[50%] border-2 border-white/20" />
 
-            <div className="planet planet-one left-[10%] top-[19%] h-[70px] w-[70px] sm:h-[90px] sm:w-[90px]">
+            <div className="planet planet-one absolute left-[10%] top-[19%] h-[70px] w-[70px] sm:h-[90px] sm:w-[90px]">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-pink-200 via-fuchsia-400 to-violet-700 shadow-[inset_-12px_-10px_20px_rgba(40,10,100,.35),0_0_35px_rgba(222,120,255,.4)]" />
               <div className="absolute left-2 top-5 h-3 w-10 rotate-[-25deg] rounded-full bg-white/35 blur-[2px]" />
               <div className="absolute -right-2 top-6 h-5 w-5 rounded-full border-4 border-pink-200/70" />
             </div>
 
-            <div className="planet planet-two bottom-[16%] right-[10%] h-[65px] w-[65px] sm:h-[84px] sm:w-[84px]">
+            <div className="planet planet-two absolute bottom-[16%] right-[10%] h-[65px] w-[65px] sm:h-[84px] sm:w-[84px]">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-200 via-orange-400 to-rose-600 shadow-[inset_-10px_-12px_18px_rgba(120,30,30,.3),0_0_30px_rgba(255,160,100,.3)]" />
               <div className="absolute left-2 top-5 h-2 w-8 rotate-[-25deg] rounded-full bg-yellow-100/60" />
               <div className="absolute bottom-4 left-4 h-3 w-3 rounded-full bg-red-200/50" />

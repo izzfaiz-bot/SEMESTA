@@ -12,7 +12,10 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  X,
 } from "lucide-react";
+
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -97,13 +100,28 @@ export default function LoginPage() {
 
   if (checking) {
     return (
-      <main className="flex h-dvh items-center justify-center overflow-hidden bg-[#e4f6ff]">
-        <div className="text-center">
-          <LoaderCircle className="mx-auto animate-spin text-blue-600" size={36} />
-          <p className="mt-4 text-sm font-semibold text-slate-500">
-            Memeriksa sesi SEMESTA...
-          </p>
-        </div>
+      <main className="flex h-dvh items-center justify-center overflow-hidden bg-[#e4f6ff] p-4">
+        <section className="relative flex h-64 w-full max-w-sm items-center justify-center rounded-[28px] border border-white/80 bg-white/85 shadow-[0_25px_80px_rgba(28,110,180,0.16)] backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            aria-label="Kembali ke halaman awal"
+            title="Kembali ke halaman awal"
+            className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-white/90 text-slate-400 shadow-sm transition duration-300 hover:rotate-90 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md"
+          >
+            <X size={20} strokeWidth={2.5} />
+          </button>
+
+          <div className="text-center">
+            <LoaderCircle
+              className="mx-auto animate-spin text-blue-600"
+              size={36}
+            />
+            <p className="mt-4 text-sm font-semibold text-slate-500">
+              Memeriksa sesi SEMESTA...
+            </p>
+          </div>
+        </section>
       </main>
     );
   }
@@ -120,18 +138,36 @@ export default function LoginPage() {
       </div>
 
       <section className="relative grid h-full max-h-[720px] w-full max-w-5xl grid-cols-1 overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_25px_80px_rgba(28,110,180,0.16)] backdrop-blur-xl md:h-[min(90dvh,680px)] md:grid-cols-[0.9fr_1.1fr] md:rounded-[32px]">
+        {/* Tombol kembali di dalam card */}
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          aria-label="Kembali ke halaman awal"
+          title="Kembali ke halaman awal"
+          className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-white/90 text-slate-400 shadow-sm transition duration-300 hover:rotate-90 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md"
+        >
+          <X size={20} strokeWidth={2.5} />
+        </button>
+
         <aside className="relative hidden overflow-hidden bg-gradient-to-br from-[#159ff3] via-[#087be8] to-[#3159d9] p-8 text-white md:flex md:flex-col md:justify-between lg:p-10">
           <div className="pointer-events-none absolute -right-24 -top-16 h-72 w-72 rounded-full border border-white/15" />
           <div className="pointer-events-none absolute -bottom-24 -left-20 h-72 w-72 rounded-full border border-white/10" />
 
           <div className="relative flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/30 bg-white/15 shadow-lg">
-              <Rocket size={23} />
-            </div>
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-white/50 bg-white shadow-lg shadow-cyan-950/10">
+                        <Image
+                          src="/logo-semesta.jpeg"
+                          alt="Logo SEMESTA"
+                          width={48}
+                          height={48}
+                          priority
+                          className="h-full w-full rounded-full object-contain p-0.5"
+                        />
+                      </div>
             <div>
               <p className="text-lg font-black tracking-[0.16em]">SEMESTA</p>
               <p className="text-[10px] font-semibold tracking-[0.22em] text-sky-100">
-                SCIENCE ADVENTURE
+                Serunya Menjelajahi Sains dan Tata Alam
               </p>
             </div>
           </div>
@@ -145,7 +181,11 @@ export default function LoginPage() {
               <div className="absolute bottom-5 left-2 rounded-full bg-white/20 p-2">
                 <Sparkles size={15} />
               </div>
-              <span className="select-none text-7xl" role="img" aria-label="Astronaut">
+              <span
+                className="select-none text-7xl"
+                role="img"
+                aria-label="Astronaut"
+              >
                 👨‍🚀
               </span>
             </div>
@@ -166,7 +206,7 @@ export default function LoginPage() {
           </div>
 
           <div className="relative flex items-center justify-between border-t border-white/20 pt-4 text-[10px] font-medium text-blue-100">
-            <span>MEDIA PEMBELAJARAN IPAS</span>
+            <span>MEDIA PEMBELAJARAN IPA</span>
             <span>EDISI 2026</span>
           </div>
         </aside>
@@ -250,10 +290,18 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
-                    aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                    aria-label={
+                      showPassword
+                        ? "Sembunyikan kata sandi"
+                        : "Tampilkan kata sandi"
+                    }
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
                   >
-                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    {showPassword ? (
+                      <EyeOff size={17} />
+                    ) : (
+                      <Eye size={17} />
+                    )}
                   </button>
                 </div>
               </div>
