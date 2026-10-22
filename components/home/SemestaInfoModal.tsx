@@ -20,7 +20,7 @@ interface SemestaInfoModalProps {
 
 const PEOPLE = [
   {
-    role: "PENGEMBANG",
+    role: "DEVELOPMENT",
     name: "Andrian Rizki A",
     detail: "Mahasiswa UMP · Teknik Informatika 2023",
     instagram: "@andrian.aminudin",
@@ -33,7 +33,7 @@ const PEOPLE = [
     delay: "180ms",
   },
   {
-    role: "PEMATERI",
+    role: "DEVELOPMENT",
     name: "Faiz Afif Naufal",
     detail: "Mahasiswa UMP · PGSD 2024",
     instagram: "@faizaajj_",
@@ -265,8 +265,8 @@ export default function SemestaInfoModal({
             </div>
 
             <p className="text-[12px] leading-6 text-slate-600 sm:text-[13px] sm:leading-7">
-              <strong className="font-extrabold text-sky-700">SEMESTA</strong>{" "}
-              adalah media pembelajaran IPAS interaktif yang mengajak siswa
+              <strong className="font-extrabold text-sky-700">SEMESTA (Serunya Menjelajahi Tata Alam)</strong>{" "}
+              adalah media pembelajaran IPA interaktif yang mengajak siswa
               menjelajahi berbagai fenomena alam melalui materi digital, video
               edukatif, kuis, dan pengalaman belajar yang menyenangkan.
             </p>

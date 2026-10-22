@@ -21,6 +21,8 @@ import {
   X,
 } from "lucide-react";
 
+import Image from "next/image";
+
 const menus = [
   {
     label: "Dashboard",
@@ -146,13 +148,20 @@ export default function DashboardSidebar({
             collapsed ? "justify-center px-2" : "gap-3 px-4"
           }`}
         >
-          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white shadow-lg shadow-sky-300/40">
-            <Rocket size={23} strokeWidth={2.2} />
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg shadow-sky-300/40">
+  <Image
+    src="/logo-semesta.jpeg"
+    alt="Logo SEMESTA"
+    width={44}
+    height={44}
+    priority
+    className="h-full w-full object-contain"
+  />
 
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#eaf8ff] bg-amber-400">
-              <Sparkles size={9} className="text-white" />
-            </span>
-          </div>
+  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#eaf8ff] bg-amber-400">
+    <Sparkles size={9} className="text-white" />
+  </span>
+</div>
 
           {!collapsed && (
             <div className="min-w-0 flex-1">
@@ -161,7 +170,7 @@ export default function DashboardSidebar({
               </h1>
 
               <p className="text-[10px] font-extrabold tracking-[0.17em] text-sky-600">
-                SCIENCE ADVENTURE
+                DASHBOARD
               </p>
             </div>
           )}
