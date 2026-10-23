@@ -19,12 +19,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-type Props = {
-  src: string;
-};
+type Props = { src: string };
 
 export default function PdfSlideViewer({ src }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageHeight, setPageHeight] = useState(500);
@@ -33,75 +32,121 @@ export default function PdfSlideViewer({ src }: Props) {
   const [reloadKey, setReloadKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updatePageDimensions = useCallback(() => {
-    const container = document.getElementById("pdf-viewer-content");
-    if (container) {
-      const height = container.clientHeight - 24;
-      setPageHeight(Math.max(300, height));
-    }
+    const container = containerRef.current?.querySelector<HTMLElement>(
+      "#pdf-viewer-content",
+    );
+
+    if (!container) return;
+
+    const isMobile = window.innerWidth < 640;
+    const padding = isMobile ? 16 : 24;
+    const availableWidth = Math.max(100, container.clientWidth - padding);
+    const availableHeight = Math.max(100, container.clientHeight - padding);
+
+    // Batasi ukuran slide ke rasio 16:9 di mobile.
+    // Tinggi juga dibatasi agar seluruh slide tetap masuk ke area PDF.
+    const targetHeight = isMobile
+      ? Math.min(availableHeight, (availableWidth * 9) / 16)
+      : availableHeight;
+
+    setPageHeight(Math.max(100, targetHeight));
   }, []);
 
   useEffect(() => {
     updatePageDimensions();
+
+    const container = containerRef.current;
+    const observer = new ResizeObserver(updatePageDimensions);
+
+    if (container) observer.observe(container);
+
     window.addEventListener("resize", updatePageDimensions);
-    return () => window.removeEventListener("resize", updatePageDimensions);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePageDimensions);
+    };
   }, [updatePageDimensions]);
 
-  // Pantau perubahan status fullscreen browser
+  // Pantau perubahan fullscreen.
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const isFull = !!document.fullscreenElement;
+      const isFull = document.fullscreenElement === containerRef.current;
       setIsFullscreen(isFull);
-      if (!isFull) {
-        setShowControls(true);
+      setShowControls(true);
+
+      if (!document.fullscreenElement) {
+        screen.orientation?.unlock?.();
       }
-      setTimeout(updatePageDimensions, 100);
+
+      setTimeout(updatePageDimensions, 150);
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, [updatePageDimensions]);
 
-  // Logika Auto-Hide Kursor & Tombol saat Fullscreen
+  // Sembunyikan kontrol setelah tidak ada aktivitas saat fullscreen.
   useEffect(() => {
     if (!isFullscreen) return;
 
-    const handleMouseMove = () => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleActivity = () => {
       setShowControls(true);
+
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
+
       hideTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
       }, 2500);
     };
 
-    const currentContainer = containerRef.current;
-    currentContainer?.addEventListener("mousemove", handleMouseMove);
+    container.addEventListener("mousemove", handleActivity);
+    container.addEventListener("touchstart", handleActivity, {
+      passive: true,
+    });
 
     return () => {
-      currentContainer?.removeEventListener("mousemove", handleMouseMove);
+      container.removeEventListener("mousemove", handleActivity);
+      container.removeEventListener("touchstart", handleActivity);
+
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
     };
   }, [isFullscreen]);
 
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return;
+  const toggleFullscreen = async () => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch((err) => {
-        console.error("[Fullscreen] Gagal masuk mode layar penuh:", err);
-      });
-    } else {
-      document.exitFullscreen().catch((err) => {
-        console.error("[Fullscreen] Gagal keluar mode layar penuh:", err);
-      });
+    try {
+      if (!document.fullscreenElement) {
+        await container.requestFullscreen();
+
+        try {
+          await screen.orientation?.lock?.("landscape");
+        } catch {
+          // Tidak semua perangkat atau browser mendukung kunci orientasi.
+        }
+
+        setShowControls(true);
+        setTimeout(updatePageDimensions, 150);
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error("[Fullscreen] Gagal mengubah mode layar:", err);
     }
   };
 
@@ -121,64 +166,106 @@ export default function PdfSlideViewer({ src }: Props) {
     setPageNumber((prev) => Math.min(pageCount, prev + 1));
   }, [pageCount]);
 
-  // Navigasi Keyboard (Panah Kiri & Kanan)
+  // Navigasi keyboard.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        ["INPUT", "TEXTAREA", "SELECT"].includes(
+          (event.target as HTMLElement)?.tagName,
+        )
+      ) {
         return;
       }
 
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
         handlePrevious();
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
         handleNext();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
+
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handlePrevious, handleNext]);
+
+  // Navigasi swipe untuk smartphone.
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+
+    const touch = event.changedTouches[0];
+    if (!start || !touch || loading || error || pageCount < 2) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+      return;
+    }
+
+    if (deltaX < 0) handleNext();
+    else handlePrevious();
+  };
+
+  const controlsVisible = !isFullscreen || showControls;
 
   return (
     <div
       ref={containerRef}
-      className={`flex min-w-0 flex-col overflow-hidden bg-[#111c2c] select-none ${
+      className={`relative flex min-w-0 flex-col overflow-hidden bg-[#111c2c] select-none ${
         isFullscreen
-          ? "fixed inset-0 z-50 h-screen w-screen rounded-none cursor-default"
-          : "relative h-full flex-1 rounded-xl min-h-[520px]"
+          ? "fixed inset-0 z-50 h-dvh w-screen rounded-none"
+          : "relative h-full min-h-0 min-w-0 flex-1 rounded-xl"
       }`}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
     >
-      {/* Tombol Fullscreen / Close digeser sedikit ke bawah dan ke kiri (top-4 right-4) */}
+      {/* Tombol fullscreen */}
       <button
         type="button"
         onClick={toggleFullscreen}
-        aria-label={isFullscreen ? "Keluar Fullscreen" : "Fullscreen"}
-        className={`absolute top-4 right-4 z-30 inline-flex items-center justify-center rounded-lg border border-white/10 bg-[#0b192b]/85 p-2.5 text-cyan-300 backdrop-blur-md hover:bg-white/10 transition-all duration-300 ${
-          isFullscreen && !showControls
-            ? "opacity-0 pointer-events-none translate-y-[-10px]"
-            : "opacity-100 translate-y-0"
+        aria-label={isFullscreen ? "Keluar fullscreen" : "Fullscreen"}
+        title={isFullscreen ? "Keluar fullscreen" : "Fullscreen"}
+        className={`absolute right-3 top-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#0b192b]/90 text-cyan-300 shadow-lg backdrop-blur-md transition-all duration-300 sm:right-4 sm:top-4 ${
+          controlsVisible
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-2 opacity-0"
         }`}
-        title={isFullscreen ? "Tutup" : "Fullscreen"}
       >
-        {isFullscreen ? <X size={18} /> : <Maximize2 size={16} />}
+        {isFullscreen ? <X size={18} /> : <Maximize2 size={17} />}
       </button>
 
+      {/* Area PDF */}
       <div
         id="pdf-viewer-content"
-        className="relative min-h-0 flex-1 overflow-hidden bg-[#111c2c] p-3 flex justify-center items-center"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden bg-[#111c2c] p-2 sm:p-3"
+        style={{ touchAction: "pan-y" }}
       >
         {loading && !error && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[#111c2c]">
             <LoaderCircle size={30} className="animate-spin text-cyan-300" />
-            <p className="text-sm text-slate-400">Memuat dokumen PDF...</p>
+            <p className="text-xs text-slate-400 sm:text-sm">
+              Memuat dokumen PDF...
+            </p>
           </div>
         )}
 
         {error ? (
-          <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 px-5 text-center">
+          <div className="flex min-h-0 flex-col items-center justify-center gap-3 px-5 text-center">
             <FileWarning size={36} className="text-rose-300" />
             <h3 className="font-semibold text-white">
               PDF tidak dapat ditampilkan
@@ -199,8 +286,10 @@ export default function PdfSlideViewer({ src }: Props) {
             onLoadSuccess={({ numPages }) => {
               console.log("[PDF] Jumlah halaman:", numPages);
               setPageCount(numPages);
+              setPageNumber(1);
               setLoading(false);
               setError("");
+              requestAnimationFrame(updatePageDimensions);
             }}
             onLoadError={(err) => {
               console.error("[PDF] Gagal memuat:", err);
@@ -209,7 +298,7 @@ export default function PdfSlideViewer({ src }: Props) {
             }}
             loading={null}
             error={null}
-            className="flex justify-center items-center w-full h-full"
+            className="flex h-full w-full items-center justify-center"
           >
             {Array.from({ length: pageCount }, (_, index) => {
               const currentPage = index + 1;
@@ -218,8 +307,8 @@ export default function PdfSlideViewer({ src }: Props) {
               return (
                 <div
                   key={`page-${currentPage}`}
-                  className={`w-full h-full flex justify-center items-center ${
-                    isActive ? "flex" : "hidden"
+                  className={`flex h-full w-full items-center justify-center ${
+                    isActive ? "" : "hidden"
                   }`}
                 >
                   <Page
@@ -227,12 +316,44 @@ export default function PdfSlideViewer({ src }: Props) {
                     height={pageHeight}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    className="max-h-full object-contain rounded-lg shadow-xl pointer-events-none"
+                    className="rounded-lg object-contain shadow-xl pointer-events-none"
                   />
                 </div>
               );
             })}
           </Document>
+        )}
+
+        {/* Tombol slide sebelumnya */}
+        {!loading && !error && pageCount > 1 && (
+          <button
+            type="button"
+            onClick={handlePrevious}
+            disabled={pageNumber <= 1}
+            aria-label="Slide sebelumnya"
+            title="Slide sebelumnya"
+            className={`absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#0b192b]/90 text-white shadow-lg backdrop-blur-md transition-all hover:border-cyan-300/50 hover:bg-cyan-400/15 hover:text-cyan-200 active:scale-90 sm:left-4 sm:h-12 sm:w-12 ${
+              controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            } disabled:cursor-not-allowed disabled:opacity-30`}
+          >
+            <ChevronLeft size={25} />
+          </button>
+        )}
+
+        {/* Tombol slide berikutnya */}
+        {!loading && !error && pageCount > 1 && (
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={pageNumber >= pageCount}
+            aria-label="Slide berikutnya"
+            title="Slide berikutnya"
+            className={`absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#0b192b]/90 text-white shadow-lg backdrop-blur-md transition-all hover:border-cyan-300/50 hover:bg-cyan-400/15 hover:text-cyan-200 active:scale-90 sm:right-4 sm:h-12 sm:w-12 ${
+              controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            } disabled:cursor-not-allowed disabled:opacity-30`}
+          >
+            <ChevronRight size={25} />
+          </button>
         )}
       </div>
     </div>
