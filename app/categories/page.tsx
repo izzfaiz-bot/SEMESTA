@@ -8,12 +8,11 @@ import {
   ArrowRight,
   Atom,
   CloudRain,
-  Maximize2,
+  Maximize,
   Mountain,
   Sparkles,
   Star,
   Waves,
-  X,
   Zap,
 } from "lucide-react";
 
@@ -82,21 +81,61 @@ const categoryStyles = {
 
 export default function CategoriesPage() {
   const router = useRouter();
-  const [fullscreen, setFullscreen] = useState(false);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [categories, setCategories] = useState<CategoryFromDB[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
 
+  // Sinkronkan status fullscreen, mengikuti pola halaman utama.
   useEffect(() => {
-    const syncFullscreen = () =>
-      setFullscreen(Boolean(document.fullscreenElement));
+    let resizeFrame = 0;
+
+    const syncFullscreen = () => {
+      cancelAnimationFrame(resizeFrame);
+
+      resizeFrame = requestAnimationFrame(() => {
+        const apiFullscreen = Boolean(document.fullscreenElement);
+
+        // Deteksi tambahan untuk fullscreen browser seperti F11.
+        const heightDifference = Math.abs(
+          window.outerHeight - window.screen.availHeight,
+        );
+
+        const widthDifference = Math.abs(
+          window.outerWidth - window.screen.availWidth,
+        );
+
+        const browserFullscreen =
+          heightDifference <= 3 ||
+          (window.outerHeight >= window.screen.height - 3 &&
+            window.innerHeight >= window.screen.height - 3) ||
+          (widthDifference <= 3 &&
+            window.outerWidth >= window.screen.width - 3);
+
+        setIsFullscreen(apiFullscreen || browserFullscreen);
+      });
+    };
+
+    syncFullscreen();
 
     document.addEventListener("fullscreenchange", syncFullscreen);
-    return () =>
+    window.addEventListener("resize", syncFullscreen);
+    window.addEventListener("orientationchange", syncFullscreen);
+    window.addEventListener("focus", syncFullscreen);
+
+    return () => {
+      cancelAnimationFrame(resizeFrame);
+
       document.removeEventListener("fullscreenchange", syncFullscreen);
+      window.removeEventListener("resize", syncFullscreen);
+      window.removeEventListener("orientationchange", syncFullscreen);
+      window.removeEventListener("focus", syncFullscreen);
+    };
   }, []);
 
+  // Ambil kategori yang sudah dipublikasikan.
   useEffect(() => {
     let active = true;
 
@@ -129,7 +168,9 @@ export default function CategoriesPage() {
               a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
           );
 
-        if (active) setCategories(publishedCategories);
+        if (active) {
+          setCategories(publishedCategories);
+        }
       } catch (err) {
         console.error("Gagal memuat kategori:", err);
 
@@ -139,7 +180,9 @@ export default function CategoriesPage() {
           );
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
@@ -150,7 +193,8 @@ export default function CategoriesPage() {
     };
   }, [retryCount]);
 
-  const toggleFullscreen = async () => {
+  // Masuk fullscreen.
+  const enterFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
@@ -160,18 +204,6 @@ export default function CategoriesPage() {
         try {
           if (typeof orientation.lock === "function") {
             await orientation.lock("landscape");
-          }
-        } catch {
-          // Penguncian orientasi tidak didukung semua perangkat.
-        }
-      } else {
-        await document.exitFullscreen();
-
-        const orientation = screen.orientation as OrientationWithLock;
-
-        try {
-          if (typeof orientation.unlock === "function") {
-            orientation.unlock();
           }
         } catch {
           // Penguncian orientasi tidak didukung semua perangkat.
@@ -230,19 +262,18 @@ export default function CategoriesPage() {
           <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
         </button>
 
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          aria-label={fullscreen ? "Keluar dari layar penuh" : "Layar penuh"}
-          title={fullscreen ? "Keluar dari layar penuh" : "Layar penuh"}
-          className="glass-button grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-100/40 bg-white/10 text-cyan-50 shadow-lg transition sm:h-11 sm:w-11"
-        >
-          {fullscreen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Maximize2 className="h-5 w-5" />
-          )}
-        </button>
+        {/* Ikon fullscreen disembunyikan saat fullscreen terdeteksi. */}
+        {!isFullscreen && (
+          <button
+            type="button"
+            onClick={enterFullscreen}
+            aria-label="Masuk layar penuh"
+            title="Masuk layar penuh"
+            className="group grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/40 bg-white/15 text-white shadow-lg shadow-sky-950/10 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-cyan-200/70 hover:bg-white/25 hover:text-cyan-100 active:translate-y-0 sm:h-12 sm:w-12"
+          >
+            <Maximize className="h-5 w-5 transition-transform duration-300 group-hover:scale-110 sm:h-6 sm:w-6" />
+          </button>
+        )}
       </header>
 
       <section className="relative z-10 mx-auto flex h-[calc(100svh-64px)] max-w-[1440px] flex-col px-4 pb-3 sm:h-[calc(100svh-76px)] sm:px-7 sm:pb-4 lg:px-10">

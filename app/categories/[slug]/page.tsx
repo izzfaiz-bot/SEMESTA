@@ -1,4 +1,3 @@
-// app/categories/[slug]/page.tsx
 "use client";
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
@@ -10,7 +9,7 @@ import {
   BookOpen,
   Compass,
   CloudRain,
-  Maximize2,
+  Maximize,
   Mountain,
   RefreshCw,
   Rocket,
@@ -49,7 +48,8 @@ const themes = {
     glow: "rgba(255,111,55,.26)",
     card: "linear-gradient(145deg,rgba(255,160,75,.2),rgba(255,255,255,.045))",
     label: "EARTH EXPLORER",
-    intro: "Peristiwa alam yang terjadi akibat proses di dalam bumi maupun di permukaan bumi yang berkaitan dengan batuan, struktur bumi, dan pergerakan lempeng tektonik.",
+    intro:
+      "Peristiwa alam yang terjadi akibat proses di dalam bumi maupun di permukaan bumi yang berkaitan dengan batuan, struktur bumi, dan pergerakan lempeng tektonik.",
     icon: Mountain,
     orb: "radial-gradient(circle,rgba(255,139,65,.3),transparent 70%)",
   },
@@ -60,7 +60,8 @@ const themes = {
     glow: "rgba(65,190,255,.25)",
     card: "linear-gradient(145deg,rgba(91,201,255,.2),rgba(255,255,255,.045))",
     label: "WEATHER EXPLORER",
-    intro: "Peristiwa alam yang terjadi di atmosfer atau lapisan udara yang menyelimuti Bumi. Fenomena ini berkaitan dengan kondisi cuaca dan proses yang memengaruhinya, seperti suhu udara, tekanan udara, kelembapan, angin, serta pembentukan awan.",
+    intro:
+      "Peristiwa alam yang terjadi di atmosfer atau lapisan udara yang menyelimuti Bumi. Fenomena ini berkaitan dengan kondisi cuaca dan proses yang memengaruhinya, seperti suhu udara, tekanan udara, kelembapan, angin, serta pembentukan awan.",
     icon: CloudRain,
     orb: "radial-gradient(circle,rgba(76,190,255,.3),transparent 70%)",
   },
@@ -71,7 +72,8 @@ const themes = {
     glow: "rgba(48,238,197,.24)",
     card: "linear-gradient(145deg,rgba(61,231,199,.19),rgba(255,255,255,.045))",
     label: "OCEAN EXPLORER",
-    intro: "Peristiwa alam yang berkaitan dengan pergerakan, persebaran, dan perubahan air di Bumi, baik di permukaan, di dalam tanah, maupun di atmosfer.",
+    intro:
+      "Peristiwa alam yang berkaitan dengan pergerakan, persebaran, dan perubahan air di Bumi, baik di permukaan, di dalam tanah, maupun di atmosfer.",
     icon: Waves,
     orb: "radial-gradient(circle,rgba(38,229,193,.3),transparent 70%)",
   },
@@ -82,7 +84,8 @@ const themes = {
     glow: "rgba(175,123,255,.28)",
     card: "linear-gradient(145deg,rgba(183,140,255,.2),rgba(255,255,255,.045))",
     label: "SPACE EXPLORER",
-    intro: "Peristiwa alam yang terjadi di luar atmosfer bumi atau melibatkan benda-benda langit, seperti Matahari, Bulan, planet, bintang, dan benda langit lainnya. Fenomena ini terjadi akibat berbagai proses alam, seperti pergerakan benda langit, gaya gravitasi, serta interaksi antara benda-benda di ruang angkasa.",
+    intro:
+      "Peristiwa alam yang terjadi di luar atmosfer bumi atau melibatkan benda-benda langit, seperti Matahari, Bulan, planet, bintang, dan benda langit lainnya. Fenomena ini terjadi akibat berbagai proses alam, seperti pergerakan benda langit, gaya gravitasi, serta interaksi antara benda-benda di ruang angkasa.",
     icon: Atom,
     orb: "radial-gradient(circle,rgba(176,117,255,.3),transparent 70%)",
   },
@@ -115,7 +118,7 @@ export default function CategoryDetailPage({
   const [category, setCategory] = useState<CategoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [fullscreen, setFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -169,21 +172,61 @@ export default function CategoryDetailPage({
     return () => controller.abort();
   }, [loadCategory, retryCount]);
 
+  // Deteksi fullscreen seperti halaman utama SEMESTA.
   useEffect(() => {
-    const syncFullscreen = () =>
-      setFullscreen(Boolean(document.fullscreenElement));
+    let resizeFrame = 0;
+
+    const syncFullscreen = () => {
+      cancelAnimationFrame(resizeFrame);
+
+      resizeFrame = requestAnimationFrame(() => {
+        const apiFullscreen = Boolean(document.fullscreenElement);
+
+        const heightDifference = Math.abs(
+          window.outerHeight - window.screen.availHeight,
+        );
+
+        const widthDifference = Math.abs(
+          window.outerWidth - window.screen.availWidth,
+        );
+
+        const browserFullscreen =
+          heightDifference <= 3 ||
+          (window.outerHeight >= window.screen.height - 3 &&
+            window.innerHeight >= window.screen.height - 3) ||
+          (widthDifference <= 3 &&
+            window.outerWidth >= window.screen.width - 3);
+
+        setIsFullscreen(apiFullscreen || browserFullscreen);
+      });
+    };
+
+    syncFullscreen();
 
     document.addEventListener("fullscreenchange", syncFullscreen);
-    return () =>
+    window.addEventListener("resize", syncFullscreen);
+    window.addEventListener("orientationchange", syncFullscreen);
+    window.addEventListener("focus", syncFullscreen);
+
+    return () => {
+      cancelAnimationFrame(resizeFrame);
       document.removeEventListener("fullscreenchange", syncFullscreen);
+      window.removeEventListener("resize", syncFullscreen);
+      window.removeEventListener("orientationchange", syncFullscreen);
+      window.removeEventListener("focus", syncFullscreen);
+    };
   }, []);
 
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
+
+        try {
+          await screen.orientation.lock("landscape");
+        } catch {
+          // Penguncian orientasi tidak didukung di semua browser.
+        }
       }
     } catch {
       // Browser mungkin tidak mendukung mode layar penuh.
@@ -268,7 +311,7 @@ export default function CategoryDetailPage({
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/5 via-transparent to-black/25" />
 
       {/* Navigasi */}
-      <header className="relative z-20 mx-auto flex h-[62px] w-full max-w-[1440px] shrink-0 items-center justify-between px-4 sm:h-[70px] sm:px-7 lg:px-10">
+      <header className="relative z-20 mx-auto flex h-[64px] w-full max-w-[1440px] items-center justify-between px-4 sm:h-[76px] sm:px-7 lg:px-10">
         <button
           type="button"
           onClick={() => router.push("/categories")}
@@ -283,21 +326,19 @@ export default function CategoryDetailPage({
           onClick={() => router.push("/")}
           className="flex items-center gap-2.5 text-left"
           aria-label="Beranda SEMESTA"
-        >
-        </button>
+        ></button>
 
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          aria-label={fullscreen ? "Keluar dari layar penuh" : "Layar penuh"}
-          className="grid h-10 w-10 place-items-center rounded-2xl border border-white/15 bg-white/[.07] transition hover:bg-white/15 sm:h-11 sm:w-11"
-        >
-          {fullscreen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Maximize2 className="h-5 w-5" />
-          )}
-        </button>
+        {!isFullscreen && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label="Masuk layar penuh"
+            title="Masuk layar penuh"
+            className="grid h-10 w-10 place-items-center rounded-2xl border border-white/15 bg-white/[.07] transition hover:bg-white/15 sm:h-11 sm:w-11"
+          >
+            <Maximize className="h-5 w-5" />
+          </button>
+        )}
       </header>
 
       <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col overflow-hidden px-4 sm:px-7 lg:px-10">
@@ -392,21 +433,6 @@ export default function CategoryDetailPage({
                       category.description ??
                       "Temukan berbagai fenomena sains menarik."}
                   </p>
-
-                  
-
-                  {category.topics.length > 0 && (
-                    <div className="mt-3 hidden max-w-xl flex-wrap gap-2 md:flex">
-                      {category.topics.map((topic) => (
-                        <span
-                          key={topic}
-                          className="rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[10px] font-semibold text-white/65"
-                        >
-                          {topic}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Ilustrasi kategori */}
