@@ -195,8 +195,17 @@ export default function PhenomenonDetail({ slug }: Props) {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
 
+        // Perbaikan TypeScript untuk ScreenOrientation.lock().
         try {
-          await screen.orientation.lock("landscape");
+          const orientation = screen.orientation as unknown as {
+            lock?: (
+              orientation: "landscape",
+            ) => Promise<void>;
+          };
+
+          if (typeof orientation.lock === "function") {
+            await orientation.lock("landscape");
+          }
         } catch {
           // Penguncian orientasi tidak didukung di semua browser.
         }
@@ -484,7 +493,6 @@ export default function PhenomenonDetail({ slug }: Props) {
                 </span>
               </div>
 
-              {/* Grid tidak lagi meregang mengikuti seluruh tinggi fullscreen */}
               <div className="grid min-h-0 w-full flex-none grid-rows-3 gap-2 overflow-hidden md:grid-cols-3 md:grid-rows-1 md:gap-3 md:self-center md:w-full md:max-w-6xl">
                 {mediaOptions.map((option, index) => {
                   const Icon = option.icon;

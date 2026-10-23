@@ -1,3 +1,4 @@
+
 // components/phenomena/PdfSlideViewer.tsx
 "use client";
 
@@ -21,9 +22,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 type Props = { src: string };
 
+type OrientationWithOptionalLock = ScreenOrientation & {
+  lock?: (orientation: "landscape" | "portrait") => Promise<void>;
+  unlock?: () => void;
+};
+
 export default function PdfSlideViewer({ src }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const [pageCount, setPageCount] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageHeight, setPageHeight] = useState(500);
@@ -32,6 +39,7 @@ export default function PdfSlideViewer({ src }: Props) {
   const [reloadKey, setReloadKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updatePageDimensions = useCallback(() => {
@@ -46,8 +54,6 @@ export default function PdfSlideViewer({ src }: Props) {
     const availableWidth = Math.max(100, container.clientWidth - padding);
     const availableHeight = Math.max(100, container.clientHeight - padding);
 
-    // Batasi ukuran slide ke rasio 16:9 di mobile.
-    // Tinggi juga dibatasi agar seluruh slide tetap masuk ke area PDF.
     const targetHeight = isMobile
       ? Math.min(availableHeight, (availableWidth * 9) / 16)
       : availableHeight;
@@ -75,20 +81,31 @@ export default function PdfSlideViewer({ src }: Props) {
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isFull = document.fullscreenElement === containerRef.current;
+
       setIsFullscreen(isFull);
       setShowControls(true);
 
       if (!document.fullscreenElement) {
-        screen.orientation?.unlock?.();
+        const orientation = window.screen
+          .orientation as OrientationWithOptionalLock;
+
+        try {
+          orientation.unlock?.();
+        } catch {
+          // Tidak semua browser mendukung pembukaan kunci orientasi.
+        }
       }
 
-      setTimeout(updatePageDimensions, 150);
+      window.setTimeout(updatePageDimensions, 150);
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
 
     return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener(
+        "fullscreenchange",
+        handleFullscreenChange,
+      );
     };
   }, [updatePageDimensions]);
 
@@ -122,6 +139,7 @@ export default function PdfSlideViewer({ src }: Props) {
 
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
       }
     };
   }, [isFullscreen]);
@@ -135,13 +153,18 @@ export default function PdfSlideViewer({ src }: Props) {
         await container.requestFullscreen();
 
         try {
-          await screen.orientation?.lock?.("landscape");
+          const orientation = window.screen
+            .orientation as OrientationWithOptionalLock;
+
+          if (typeof orientation.lock === "function") {
+            await orientation.lock("landscape");
+          }
         } catch {
-          // Tidak semua perangkat atau browser mendukung kunci orientasi.
+          // Penguncian orientasi tidak didukung di semua browser.
         }
 
         setShowControls(true);
-        setTimeout(updatePageDimensions, 150);
+        window.setTimeout(updatePageDimensions, 150);
       } else {
         await document.exitFullscreen();
       }
@@ -169,10 +192,11 @@ export default function PdfSlideViewer({ src }: Props) {
   // Navigasi keyboard.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+
       if (
-        ["INPUT", "TEXTAREA", "SELECT"].includes(
-          (event.target as HTMLElement)?.tagName,
-        )
+        target &&
+        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
       ) {
         return;
       }
@@ -207,6 +231,7 @@ export default function PdfSlideViewer({ src }: Props) {
     touchStartRef.current = null;
 
     const touch = event.changedTouches[0];
+
     if (!start || !touch || loading || error || pageCount < 2) return;
 
     const deltaX = touch.clientX - start.x;
@@ -316,7 +341,7 @@ export default function PdfSlideViewer({ src }: Props) {
                     height={pageHeight}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    className="rounded-lg object-contain shadow-xl pointer-events-none"
+                    className="pointer-events-none rounded-lg object-contain shadow-xl"
                   />
                 </div>
               );

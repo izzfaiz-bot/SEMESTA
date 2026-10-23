@@ -1,3 +1,4 @@
+// app/categories/[slug]/page.tsx
 "use client";
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
@@ -218,20 +219,28 @@ export default function CategoryDetailPage({
   }, []);
 
   const toggleFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
+  try {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
 
-        try {
-          await screen.orientation.lock("landscape");
-        } catch {
-          // Penguncian orientasi tidak didukung di semua browser.
+      try {
+        const orientation = window.screen.orientation as ScreenOrientation & {
+          lock?: (orientation: "landscape" | "portrait") => Promise<void>;
+        };
+
+        if (typeof orientation.lock === "function") {
+          await orientation.lock("landscape");
         }
+      } catch {
+        // Penguncian orientasi tidak didukung di semua browser.
       }
-    } catch {
-      // Browser mungkin tidak mendukung mode layar penuh.
+    } else {
+      await document.exitFullscreen();
     }
-  };
+  } catch {
+    // Browser mungkin tidak mendukung mode layar penuh.
+  }
+};
 
   const scrollToCard = useCallback((index: number) => {
     const cards = cardRefs.current;
